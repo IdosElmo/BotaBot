@@ -1,0 +1,2 @@
+# BotaBot
+Automated trading bot

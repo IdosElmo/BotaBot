@@ -5,8 +5,30 @@
 //+------------------------------------------------------------------+
 #property copyright "Ido Elmaliah"
 #property link      "https://www.mql5.com"
-#property version   "1.00"
+#property version   "1.20"
 
+/*
+   this indicator show every inside bar.
+   inside bar will be marked with 2 arrows (blue and red) showing that
+   this bar is an inside bar to the previous bar.
+   
+   also there are 2 buffers that show the mother bar high and low as limits.
+   
+   if there are breaches, those will be marked with thumbs up and thumbs down respectively.
+   inside will be marked as FALSE after a breach as occoured.
+   important:
+   
+      insideBuffer is a buffer to help indicate the state
+      of our bar respectively to the indicator using integers:
+      EMPTY_VALIE = nothing
+      1 = inside bar
+      2 = low breach after seeing inside bar
+      3 = high breach after seeing inside bar
+      4 = maintaining inside bar status without any changes.
+
+
+
+*/
 
 #property indicator_chart_window
 #property indicator_buffers 5

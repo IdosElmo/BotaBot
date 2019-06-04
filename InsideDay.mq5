@@ -5,10 +5,18 @@
 //+------------------------------------------------------------------+
 #property copyright "Ido Elmaliah"
 #property link      "https://www.mql5.com"
-#property version   "1.00"
+#property version   "1.10"
 
 #property tester_indicator "Indicators\InsideBar.ex5"
 #include <Trade\Trade.mqh>
+
+//+------------------------------------------------------------------+
+//| Input Parameters                                                 |
+//+------------------------------------------------------------------+
+//input double lot=5.1; //Lots to be purchased.
+input double stopLossPercentage = 5.1; //Stop loss percentege.
+input double takeProfitPercentage = 8.0; //Take limit percentage.
+input double percent = 1.5; //Percent to buy from account balance.
 
 //+------------------------------------------------------------------+
 //| global parameters                                 |
@@ -21,28 +29,29 @@ MqlTradeResult  mresult={0};
 MqlTradeCheckResult check;
 MqlRates mrate[];
 
+//Indicator buffers
 double upperInside[];
 double lowerInside[];
 double insideBuff[];
-double lot=1;
+int EA_Magic=12345;
 
 bool isBreachedUP=false;
 bool isBreachedDOWN=false;
 bool isInsideDay=false;
+
 double upperDailyBound;
 double lowerDailyBound;
 
-double orderPrice=0;
 double takeLimit = 0;
-double stopLoss=0;
-double dailyBoundClose;
+double stopLoss=0;   //stop loss
+double orderPrice =0;
 
 double p_close; //previous candle's close.
 double p_high; //previous candle's high.
 double p_low;  //previous candle's low.
-int EA_Magic=12345;
 
-int handler;
+
+int handler; //custom inside bar handler
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
@@ -56,7 +65,7 @@ int OnInit()
       return(-1);
      }
    ChartIndicatorAdd(ChartID(),0,handler);
-   EventSetTimer(86400);
+   //EventSetTimer(86400);
 //---
    return(INIT_SUCCEEDED);
   }
@@ -67,7 +76,7 @@ void OnDeinit(const int reason)
   {
 //---
 //IndicatorRelease(handler);
-   EventKillTimer();
+   //EventKillTimer();
   }
 //+------------------------------------------------------------------+
 //| Expert tick function                                             |
@@ -125,27 +134,32 @@ void OnTick()
    else if(insideBuff[1]==2 && isInsideDay)
      {
       isBreachedDOWN=true;
-      takeLimit= upperDailyBound;
-      stopLoss = lowerDailyBound - 2*(lowerDailyBound - mrate[1].low);
+      takeLimit= upperDailyBound + takeProfitPercentage*(lowerDailyBound - mrate[1].low);
+      stopLoss = lowerDailyBound - stopLossPercentage*(lowerDailyBound - mrate[1].low);
      }
 //high breach and close inside
    else if(insideBuff[1]==3 && isInsideDay)
      {
-      takeLimit= lowerDailyBound;
-      stopLoss = upperDailyBound + 2*(mrate[1].high - upperDailyBound);
+      takeLimit= lowerDailyBound - takeProfitPercentage*(mrate[1].high - upperDailyBound);
+      stopLoss = upperDailyBound + stopLossPercentage*(mrate[1].high - upperDailyBound);
       isBreachedUP=true;
      }
-   else if(insideBuff[1]==EMPTY_VALUE) isInsideDay=false;
+   else if(insideBuff[1]==EMPTY_VALUE) 
+   {
+   isBreachedDOWN = false;
+   isBreachedUP =false;
+   isInsideDay=false;
+   }
 
    if(isBreachedDOWN && !Buy_opened && !Sell_opened)
      {
-      Buy(lot);
+      Buy(calculateLotSize());
       isBreachedDOWN=false;
       isInsideDay=false;
      }
    if(isBreachedUP && !Sell_opened && !Buy_opened)
      {
-      Sell(lot);
+      Sell(calculateLotSize());
       isBreachedUP=false;
       isInsideDay=false;
      }
@@ -169,24 +183,14 @@ void CloseCurrentPositions()
 //|                                                                  |
 //+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
-//| calculate Lot Size                                               |
+//| calculate Lot Size based on percentege.                                               |
 //+------------------------------------------------------------------+
 
-/*
 double calculateLotSize(){
-   if(orderAmount > 0){
-      lastLots *=lot_multi;
-      return lastLots;
-   }
    double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-   if(balance > portfilioLimit) balance = portfilioLimit;
-   double res = NormalizeDouble(balance/lot_factor,1);
-   res = (double)round(res);
-   res = res/10;
-   lastLots = res;
+   double res = NormalizeDouble((balance/100000)*percent,1);
    return res;
 }
-*/
 
 //+------------------------------------------------------------------+
 //| BUY                                                              |
@@ -292,4 +296,6 @@ bool Sell(double lots)
    */
    return true;
   }
+
 //+------------------------------------------------------------------+
+

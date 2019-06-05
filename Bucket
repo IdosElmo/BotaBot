@@ -1,0 +1,8 @@
+Risk Mgmt:
+* 3 losses in a row, cut risk in half, reset after 3 wins.
+
+Order Entry:
+Improve SL placement - use timeframe ATR to refine stop placement.
+
+Trade Mgmt:
+Market close positions where EQ was breached and then rejected. (?)

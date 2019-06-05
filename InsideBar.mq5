@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Ido Elmaliah"
 #property link      "https://www.mql5.com"
-#property version   "1.20"
+#property version   "1.30"
 
 /*
    this indicator show every inside bar.
@@ -25,9 +25,6 @@
       2 = low breach after seeing inside bar
       3 = high breach after seeing inside bar
       4 = maintaining inside bar status without any changes.
-
-
-
 */
 
 #property indicator_chart_window
@@ -190,16 +187,17 @@ int OnCalculate(const int rates_total,
         }
       else //you are already an inside bar
         {
+        
          if(high[i-1]>high[i] && low[i-1]<low[i])
            {
             HighBuff[i]= high[i];
             LowBuff[i] = low[i];
 
-            upperDailyBound=high[i-1];
-            lowerDailyBound=low[i-1];
+            //upperDailyBound=high[i-1];
+            //lowerDailyBound=low[i-1];
 
-            lineHighBuff[i]=high[i-1];
-            lineLowBuff[i]=low[i-1];
+            lineHighBuff[i]=upperDailyBound;
+            lineLowBuff[i]=lowerDailyBound;
             insideBuffer[i] = 1;
            }
          else if(high[i]>=upperDailyBound && low[i]<=lowerDailyBound)

@@ -19,8 +19,9 @@
 //input double lot=1; //Lots to be purchased.
 input double risk_percent=2; //percent to risk.
 input double InpR=1.5; //R ratio for entry.
-input double InpEvolvingR=0.3; //Evolving-R for closing position.
-input double stopLossPercentage=3; //distance from breach *Times* stopLossPercentage.
+input double InpEvolvingR=0.4; //Evolving-R for closing position.
+
+//input double stopLossPercentage=3; //distance from breach *Times* stopLossPercentage.
 //+------------------------------------------------------------------+
 //| global parameters                                 |
 //+------------------------------------------------------------------+
@@ -199,13 +200,12 @@ void OnTick()
                   trade.PositionModify(position.Ticket(),mrate[1].low,currentTP);
                   changeStopLoss=true;
                  }
+               if(R_Multiple(currentTP,currentSL,orderPrice,true))
+                 {
+                  trade.PositionClose(position.Ticket());
+                  changeStopLoss=false;
+                 }
               }
-            if(R_Multiple(currentTP,currentSL,orderPrice,true))
-              {
-               trade.PositionClose(position.Ticket());
-               changeStopLoss=false;
-              }
-
            }
 
          else if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_SELL)
@@ -223,12 +223,12 @@ void OnTick()
                   trade.PositionModify(position.Ticket(),mrate[1].high,currentTP);
                   changeStopLoss=true;
                  }
-              }
-
-            if(R_Multiple(currentTP,currentSL,orderPrice,true))
-              {
-               trade.PositionClose(position.Ticket());
-               changeStopLoss=false;
+                 
+               if(R_Multiple(currentTP,currentSL,orderPrice,true))
+                 {
+                  trade.PositionClose(position.Ticket());
+                  changeStopLoss=false;
+                 }
               }
            }
         }

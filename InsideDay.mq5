@@ -5,23 +5,27 @@
 //+------------------------------------------------------------------+
 #property copyright "Ido Elmaliah"
 #property link      "https://www.mql5.com"
-#property version   "1.10"
+#property version   "1.50"
 
 #property tester_indicator "Indicators\InsideBar.ex5"
 #include <Trade\Trade.mqh>
+#include <Trade\AccountInfo.mqh>
 
 //+------------------------------------------------------------------+
 //| Input Parameters                                                 |
 //+------------------------------------------------------------------+
-//input double lot=5.1; //Lots to be purchased.
-input double stopLossPercentage = 5.1; //Stop loss percentege.
-input double takeProfitPercentage = 8.0; //Take limit percentage.
-input double percent = 1.5; //Percent to buy from account balance.
 
+//input double pips=1;
+//input double lot=1; //Lots to be purchased.
+input double risk_percent=2; //percent to risk.
+input double InpR=1.5; //R ratio for entry.
+input double InpEvolvingR=0.3; //Evolving-R for closing position.
+input double stopLossPercentage = 3; //distance from breach *Times* stopLossPercentage.
 //+------------------------------------------------------------------+
 //| global parameters                                 |
 //+------------------------------------------------------------------+
 CTrade trade;
+CAccountInfo accountInfo;
 CPositionInfo position;
 MqlTick latest_price;
 MqlTradeRequest mrequest={0};
@@ -41,14 +45,14 @@ bool isInsideDay=false;
 
 double upperDailyBound;
 double lowerDailyBound;
-
-double takeLimit = 0;
+double positionSize=0;
+double takeLimit=0;
 double stopLoss=0;   //stop loss
-double orderPrice =0;
+double orderPrice=0;
 
-double p_close; //previous candle's close.
-double p_high; //previous candle's high.
-double p_low;  //previous candle's low.
+double pp_close; //previous previous candle's close.
+double pp_high; //previous previous candle's high.
+double pp_low;  //previous previous candle's low.
 
 
 int handler; //custom inside bar handler
@@ -65,7 +69,7 @@ int OnInit()
       return(-1);
      }
    ChartIndicatorAdd(ChartID(),0,handler);
-   //EventSetTimer(86400);
+//EventSetTimer(86400);
 //---
    return(INIT_SUCCEEDED);
   }
@@ -76,7 +80,7 @@ void OnDeinit(const int reason)
   {
 //---
 //IndicatorRelease(handler);
-   //EventKillTimer();
+//EventKillTimer();
   }
 //+------------------------------------------------------------------+
 //| Expert tick function                                             |
@@ -112,54 +116,96 @@ void OnTick()
       if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY)
         {
          Buy_opened=true;  //It is a Buy
+
+                           //50% function
+         //check evolving R for take profit 
+         orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+         double currentSL = PositionGetDouble(POSITION_SL);
+         double currentTP = PositionGetDouble(POSITION_TP);
+         double median = (currentSL + currentTP) / 2;
+         //double quarter = (currentSL + median) / 2;
+         
+         if(orderPrice > median) trade.PositionModify(position.Ticket(),median,currentTP);
+         
+         if(R_Multiple(currentTP,currentSL,orderPrice,true))
+           {
+            trade.PositionClose(position.Ticket());
+           }
         }
       else if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_SELL)
         {
          Sell_opened=true; // It is a Sell
+
+         orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+         double currentSL = PositionGetDouble(POSITION_SL);
+         double currentTP = PositionGetDouble(POSITION_TP);
+         double median = (currentSL + currentTP) / 2;
+         //double quarter = median / 2;
+         
+         if(orderPrice < median) trade.PositionModify(position.Ticket(),median,currentTP);
+         
+         if(R_Multiple(currentTP,currentSL,orderPrice,true))
+           {
+            trade.PositionClose(position.Ticket());
+           }
         }
      }
 
-   p_close= mrate[2].close;
-   p_high = mrate[2].high;
-   p_low=mrate[2].low;
+   pp_close= mrate[2].close;
+   pp_high = mrate[2].high;
+   pp_low=mrate[2].low;
 
 //you are inside bar
    if(insideBuff[1]==1 && !isInsideDay)
      {
-      upperDailyBound = p_high;
-      lowerDailyBound = p_low;
+      upperDailyBound = pp_high;
+      lowerDailyBound = pp_low;
       isInsideDay=true;
      }
 //low breach and close inside
    else if(insideBuff[1]==2 && isInsideDay)
      {
-      isBreachedDOWN=true;
-      takeLimit= upperDailyBound + takeProfitPercentage*(lowerDailyBound - mrate[1].low);
+
+      //takeLimit= upperDailyBound + takeProfitPercentage*(lowerDailyBound - mrate[1].low);
+      //stopLoss=mrate[1].low;
+
+      takeLimit=upperDailyBound;
       stopLoss = lowerDailyBound - stopLossPercentage*(lowerDailyBound - mrate[1].low);
+
+      orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+      if(R_Multiple(takeLimit,stopLoss,orderPrice,false)) isBreachedDOWN=true;
+      else isInsideDay=false;
+
      }
 //high breach and close inside
    else if(insideBuff[1]==3 && isInsideDay)
      {
-      takeLimit= lowerDailyBound - takeProfitPercentage*(mrate[1].high - upperDailyBound);
+      //takeLimit= lowerDailyBound - takeProfitPercentage*(mrate[1].high - upperDailyBound);
+      //stopLoss=mrate[1].high;
+
+      takeLimit=lowerDailyBound;
       stopLoss = upperDailyBound + stopLossPercentage*(mrate[1].high - upperDailyBound);
-      isBreachedUP=true;
+      orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_BID);
+      if(R_Multiple(takeLimit,stopLoss,orderPrice,false)) isBreachedUP=true;
+      else isInsideDay=false;
+
      }
-   else if(insideBuff[1]==EMPTY_VALUE) 
-   {
-   isBreachedDOWN = false;
-   isBreachedUP =false;
-   isInsideDay=false;
-   }
+   else if(insideBuff[1]==EMPTY_VALUE)
+     {
+      isBreachedDOWN=false;
+      isBreachedUP=false;
+      isInsideDay=false;
+     }
 
    if(isBreachedDOWN && !Buy_opened && !Sell_opened)
      {
-      Buy(calculateLotSize());
+      Buy();
       isBreachedDOWN=false;
       isInsideDay=false;
      }
    if(isBreachedUP && !Sell_opened && !Buy_opened)
      {
-      Sell(calculateLotSize());
+      Sell();
       isBreachedUP=false;
       isInsideDay=false;
      }
@@ -186,29 +232,32 @@ void CloseCurrentPositions()
 //| calculate Lot Size based on percentege.                                               |
 //+------------------------------------------------------------------+
 
-double calculateLotSize(){
-   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-   double res = NormalizeDouble((balance/100000)*percent,1);
+/*
+double calculateLotSize()
+  {
+   double balance=AccountInfoDouble(ACCOUNT_BALANCE);
+   double res=NormalizeDouble((balance/100000)*percent,1);
    return res;
-}
-
+  } */
 //+------------------------------------------------------------------+
 //| BUY                                                              |
 //+------------------------------------------------------------------+
-bool Buy(double lots)
+bool Buy()
   {
    mrequest.action = TRADE_ACTION_DEAL;                                   // immediate order execution
    mrequest.price = SymbolInfoDouble(_Symbol,SYMBOL_ASK);                 // latest ask price
    mrequest.symbol = _Symbol;                                             // currency pair
-   mrequest.volume = lots;                                                // number of lots to trade
    mrequest.magic = EA_Magic;                                             // Order Magic Number
    mrequest.type = ORDER_TYPE_BUY;                                        // Buy Order
    mrequest.type_filling = ORDER_FILLING_FOK;                             // Order execution type
    mrequest.deviation=SymbolInfoInteger(_Symbol,SYMBOL_SPREAD)*2;
    mrequest.sl=stopLoss;
    mrequest.tp=takeLimit;          // Deviation from current price
+   double equity= accountInfo.Equity();
+   positionSize = equity *(risk_percent/100)/(mrequest.tp-mrequest.price);
+   mrequest.volume=NormalizeDouble(positionSize/100000,2);                                 // number of lots to trade
+   Alert("PoistionSize: ",positionSize);
 //--- send order
-
    if(OrderCheck(mrequest,check))
      {
       if(OrderSend(mrequest,mresult))
@@ -227,7 +276,6 @@ bool Buy(double lots)
            }
         }
      }
-
 /*
    OrderSend(mrequest,mresult);
    // get the result code
@@ -249,18 +297,22 @@ bool Buy(double lots)
 //+------------------------------------------------------------------+
 //| SELL                                                             |
 //+------------------------------------------------------------------+
-bool Sell(double lots)
+bool Sell()
   {
    mrequest.action = TRADE_ACTION_DEAL;                                   // immediate order execution
    mrequest.price = SymbolInfoDouble(_Symbol,SYMBOL_BID);                 // latest ask price
-   mrequest.symbol = _Symbol;                                             // currency pair
-   mrequest.volume = lots;                                                // number of lots to trade
+   mrequest.symbol = _Symbol;                                             // currency pair                                               // number of lots to trade
    mrequest.magic = EA_Magic;                                             // Order Magic Number
    mrequest.type = ORDER_TYPE_SELL;                                       // Sell Order
    mrequest.type_filling = ORDER_FILLING_FOK;                             // Order execution type
    mrequest.deviation=SymbolInfoInteger(_Symbol,SYMBOL_SPREAD)*2;         // Deviation from current price
    mrequest.sl=stopLoss;                                         // Stop Loss
    mrequest.tp= takeLimit;
+   double equity= accountInfo.Equity();
+   positionSize = equity *(risk_percent/100)/(mrequest.price-mrequest.tp);
+   mrequest.volume=NormalizeDouble(positionSize/100000,2);                                 // number of lots to trade
+   Alert("PoistionSize: ",positionSize);
+
 //--- send order
 
    if(OrderCheck(mrequest,check))
@@ -296,6 +348,25 @@ bool Sell(double lots)
    */
    return true;
   }
-
 //+------------------------------------------------------------------+
 
+bool R_Multiple(double takeProfit,double lowerLimit,double entry,bool isEvolving)
+  {
+   double distance_to_target=MathAbs(entry-takeProfit);
+   double distance_to_stop=MathAbs(entry-lowerLimit);
+   double div=distance_to_target/distance_to_stop;
+   //Alert("R: ",div);
+
+   if(!isEvolving)
+     {
+
+      if(div > InpR) return true;
+      else return false;
+     }
+   else
+     {
+      if(div < InpEvolvingR) return true;
+      else return false;
+     }
+  }
+//+------------------------------------------------------------------+

@@ -20,7 +20,7 @@
 input double risk_percent=2; //percent to risk.
 input double InpR=1.5; //R ratio for entry.
 input double InpEvolvingR=0.3; //Evolving-R for closing position.
-input double stopLossPercentage = 3; //distance from breach *Times* stopLossPercentage.
+input double stopLossPercentage=3; //distance from breach *Times* stopLossPercentage.
 //+------------------------------------------------------------------+
 //| global parameters                                 |
 //+------------------------------------------------------------------+
@@ -116,38 +116,10 @@ void OnTick()
       if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY)
         {
          Buy_opened=true;  //It is a Buy
-
-                           //50% function
-         //check evolving R for take profit 
-         orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
-         double currentSL = PositionGetDouble(POSITION_SL);
-         double currentTP = PositionGetDouble(POSITION_TP);
-         double median = (currentSL + currentTP) / 2;
-         //double quarter = (currentSL + median) / 2;
-         
-         if(orderPrice > median) trade.PositionModify(position.Ticket(),median,currentTP);
-         
-         if(R_Multiple(currentTP,currentSL,orderPrice,true))
-           {
-            trade.PositionClose(position.Ticket());
-           }
         }
       else if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_SELL)
         {
          Sell_opened=true; // It is a Sell
-
-         orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
-         double currentSL = PositionGetDouble(POSITION_SL);
-         double currentTP = PositionGetDouble(POSITION_TP);
-         double median = (currentSL + currentTP) / 2;
-         //double quarter = median / 2;
-         
-         if(orderPrice < median) trade.PositionModify(position.Ticket(),median,currentTP);
-         
-         if(R_Multiple(currentTP,currentSL,orderPrice,true))
-           {
-            trade.PositionClose(position.Ticket());
-           }
         }
      }
 
@@ -170,10 +142,14 @@ void OnTick()
       //stopLoss=mrate[1].low;
 
       takeLimit=upperDailyBound;
-      stopLoss = lowerDailyBound - stopLossPercentage*(lowerDailyBound - mrate[1].low);
+      stopLoss = mrate[1].low;  //lowerDailyBound - stopLossPercentage*(lowerDailyBound - mrate[1].low);
 
       orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
-      if(R_Multiple(takeLimit,stopLoss,orderPrice,false)) isBreachedDOWN=true;
+      if(R_Multiple(takeLimit,stopLoss,orderPrice,false))
+        {
+         isBreachedDOWN=true;
+         isInsideDay=false;
+        }
       else isInsideDay=false;
 
      }
@@ -184,9 +160,13 @@ void OnTick()
       //stopLoss=mrate[1].high;
 
       takeLimit=lowerDailyBound;
-      stopLoss = upperDailyBound + stopLossPercentage*(mrate[1].high - upperDailyBound);
+      stopLoss = mrate[1].high; //upperDailyBound + stopLossPercentage*(mrate[1].high - upperDailyBound);
       orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_BID);
-      if(R_Multiple(takeLimit,stopLoss,orderPrice,false)) isBreachedUP=true;
+      if(R_Multiple(takeLimit,stopLoss,orderPrice,false))
+        {
+         isBreachedUP=true;
+         isInsideDay = false;
+        }
       else isInsideDay=false;
 
      }
@@ -195,6 +175,49 @@ void OnTick()
       isBreachedDOWN=false;
       isBreachedUP=false;
       isInsideDay=false;
+      
+      //check for Evolving-R
+      //check for changing stop loss
+      
+      if(PositionSelect(_Symbol)==true)
+     { // we have an opened position
+      if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY)
+        {
+         //50% function
+         //check evolving R for take profit 
+         orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+         double currentSL = PositionGetDouble(POSITION_SL);
+         double currentTP = PositionGetDouble(POSITION_TP);
+         double median=(lowerDailyBound+upperDailyBound)/2;
+         //double quarter = (currentSL + median) / 2;
+
+         if(mrate[1].close > median) trade.PositionModify(position.Ticket(),mrate[1].low,currentTP);
+
+         if(R_Multiple(currentTP,currentSL,orderPrice,true))
+           {
+            trade.PositionClose(position.Ticket());
+           }
+        }
+      else if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_SELL)
+        {
+         orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+         double currentSL = PositionGetDouble(POSITION_SL);
+         double currentTP = PositionGetDouble(POSITION_TP);
+         double median=(lowerDailyBound+upperDailyBound)/2;
+         //double quarter = median / 2;
+
+         if(mrate[1].close < median) trade.PositionModify(position.Ticket(),mrate[1].high,currentTP);
+
+         if(R_Multiple(currentTP,currentSL,orderPrice,true))
+           {
+            trade.PositionClose(position.Ticket());
+           }
+        }
+     }
+      
+      
+      
+      
      }
 
    if(isBreachedDOWN && !Buy_opened && !Sell_opened)
@@ -306,12 +329,11 @@ bool Sell()
    mrequest.type = ORDER_TYPE_SELL;                                       // Sell Order
    mrequest.type_filling = ORDER_FILLING_FOK;                             // Order execution type
    mrequest.deviation=SymbolInfoInteger(_Symbol,SYMBOL_SPREAD)*2;         // Deviation from current price
-   mrequest.sl=stopLoss;                                         // Stop Loss
+   mrequest.sl=stopLoss;                                                  // Stop Loss
    mrequest.tp= takeLimit;
    double equity= accountInfo.Equity();
    positionSize = equity *(risk_percent/100)/(mrequest.price-mrequest.tp);
-   mrequest.volume=NormalizeDouble(positionSize/100000,2);                                 // number of lots to trade
-   Alert("PoistionSize: ",positionSize);
+   mrequest.volume=NormalizeDouble(positionSize/100000,2);                 // number of lots to trade
 
 //--- send order
 
@@ -355,7 +377,7 @@ bool R_Multiple(double takeProfit,double lowerLimit,double entry,bool isEvolving
    double distance_to_target=MathAbs(entry-takeProfit);
    double distance_to_stop=MathAbs(entry-lowerLimit);
    double div=distance_to_target/distance_to_stop;
-   //Alert("R: ",div);
+//Alert("R: ",div);
 
    if(!isEvolving)
      {

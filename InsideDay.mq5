@@ -294,8 +294,8 @@ bool Buy()
    mrequest.sl=stopLoss;
    mrequest.tp=takeLimit;          // Deviation from current price
    equity=accountInfo.Equity();
-   positionSize=equity *(risk_percent/100)/((mrequest.tp-mrequest.price)*10);
-   mrequest.volume=positionSize;                                 // number of lots to trade
+   positionSize=equity *(risk_percent/100)/((mrequest.price-mrequest.sl)*100000);
+   mrequest.volume=NormalizeDouble(positionSize,2);                                 // number of lots to trade
 
    printStats(mrequest.price,mrequest.sl,mrequest.tp);
 
@@ -351,8 +351,8 @@ bool Sell()
    mrequest.sl=stopLoss;                                                  // Stop Loss
    mrequest.tp= takeLimit;
    equity=accountInfo.Equity();
-   positionSize=equity *(risk_percent/100)/((mrequest.price-mrequest.tp)*10);
-   mrequest.volume=positionSize;                 // number of lots to trade
+   positionSize=equity *(risk_percent/100)/((mrequest.sl-mrequest.price)*100000);
+   mrequest.volume=NormalizeDouble(positionSize,2);                 // number of lots to trade
 
    printStats(mrequest.price,mrequest.sl,mrequest.tp);
 
@@ -419,13 +419,15 @@ void printStats(double entryPrice,double SL,double TP)
    double distance_to_stop=MathAbs(entryPrice-SL);
    double div=distance_to_target/distance_to_stop;
 
-   Alert("High Limit: ",upperDailyBound);
-   Alert("Low Limit: ",lowerDailyBound);
+   Alert("High Limit: ",NormalizeDouble(upperDailyBound,5));
+   Alert("Low Limit: ",NormalizeDouble(lowerDailyBound,5));
    Alert("Median(50%): ",(upperDailyBound+lowerDailyBound)/2);
-   Alert("Equity: ",equity);
-   Alert("R-ratio: ",div);
-   Alert("Position Size - in LOT: ",positionSize);
-   Alert("Entry Price: ",entryPrice);
+   Alert("Equity: ",NormalizeDouble(equity,4));
+   Alert("Distance to target: ",NormalizeDouble(distance_to_target,5));
+   Alert("Distance to stop: ",NormalizeDouble(distance_to_stop,5));
+   Alert("R-ratio: ",NormalizeDouble(div,5));
+   Alert("Position Size - in LOT: ",NormalizeDouble(positionSize,3));
+   Alert("Entry Price: ",NormalizeDouble(entryPrice,5));
    Alert("Stop Loss: ",SL);
    Alert("Take Profit: ",TP);
 

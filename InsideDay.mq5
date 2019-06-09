@@ -219,7 +219,7 @@ double x = mrate[0].close;
                changeStopLoss=true;
               }
               
-            if(R_Multiple(currentTP,currentSL,orderPrice,true) && ER)
+            if(ER && R_Multiple(currentTP,currentSL,orderPrice,true))
               {
                trade.PositionClose(position.Ticket());
                changeStopLoss=false;
@@ -243,7 +243,7 @@ double x = mrate[0].close;
                trade.PositionModify(position.Ticket(),mrate[1].high,currentTP);
                changeStopLoss=true;
               }
-            if(R_Multiple(currentTP,currentSL,orderPrice,true) && ER)
+            if(ER && R_Multiple(currentTP,currentSL,orderPrice,true))
               {
 
                trade.PositionClose(position.Ticket());

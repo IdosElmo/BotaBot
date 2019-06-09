@@ -14,11 +14,12 @@
 //+------------------------------------------------------------------+
 //| Input Parameters                                                 |
 //+------------------------------------------------------------------+
-input double risk_percent=2; //percent to risk.
-input double InpR=1.5; //R ratio for entry.
-input double InpEvolvingR=0.4; //Evolving-R for closing position.
-input double stopLossPercentage=1; //distance from breach *Times* stopLossPercentage.
-input bool ER = false;
+input double risk_percent=2; //percent to risk
+input double InpR=1.5; //R ratio for entry
+input double InpEvolvingR=0.4; //Evo-R value
+input double longFactor=1; //Factor for long
+input double shortFactor=1; //Factor for short
+input bool ER = false; //Evo-R switch
 //+------------------------------------------------------------------+
 //| global parameters                                 |
 //+------------------------------------------------------------------+
@@ -159,7 +160,7 @@ void OnTick()
       double prevATRvalue=atrValues[1];
 
       takeLimit=upperDailyBound;
-      stopLoss=mrate[1].low -prevATRvalue*stopLossPercentage;
+      stopLoss=lowerDailyBound -prevATRvalue*longFactor;
 
       if(R_Multiple(takeLimit,stopLoss,orderPrice,false))
         {
@@ -176,7 +177,7 @@ void OnTick()
       double prevATRvalue=atrValues[1];
 
       takeLimit=lowerDailyBound;
-      stopLoss=mrate[1].high+prevATRvalue*stopLossPercentage;
+      stopLoss=upperDailyBound+prevATRvalue*shortFactor;
 
       if(R_Multiple(takeLimit,stopLoss,orderPrice,false))
         {

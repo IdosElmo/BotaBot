@@ -161,7 +161,7 @@ void OnTick()
       takeLimit=upperDailyBound;
       stopLoss=mrate[1].low -prevATRvalue*stopLossPercentage;
 
-      if(R_Multiple(upperDailyBound,lowerDailyBound,orderPrice,false))
+      if(R_Multiple(takeLimit,stopLoss,orderPrice,false))
         {
          isBreachedDOWN=true;
          isInsideDay=false;
@@ -178,7 +178,7 @@ void OnTick()
       takeLimit=lowerDailyBound;
       stopLoss=mrate[1].high+prevATRvalue*stopLossPercentage;
 
-      if(R_Multiple(lowerDailyBound,upperDailyBound,orderPrice,false))
+      if(R_Multiple(takeLimit,stopLoss,orderPrice,false))
         {
          isBreachedUP=true;
          isInsideDay = false;

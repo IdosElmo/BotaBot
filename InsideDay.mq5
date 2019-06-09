@@ -18,7 +18,7 @@ input double risk_percent=2; //percent to risk.
 input double InpR=1.5; //R ratio for entry.
 input double InpEvolvingR=0.4; //Evolving-R for closing position.
 input double stopLossPercentage=1; //distance from breach *Times* stopLossPercentage.
-
+input bool ER = false;
 //+------------------------------------------------------------------+
 //| global parameters                                 |
 //+------------------------------------------------------------------+
@@ -194,7 +194,7 @@ void OnTick()
      {
       isInsideDay=false;
      }
-
+double x = mrate[0].close;
    if(PositionSelect(_Symbol)==true)
      {
       isBreachedDOWN=false;
@@ -218,11 +218,13 @@ void OnTick()
                trade.PositionModify(position.Ticket(),mrate[1].low,currentTP);
                changeStopLoss=true;
               }
-            if(R_Multiple(currentTP,currentSL,orderPrice,true))
+              
+            if(R_Multiple(currentTP,currentSL,orderPrice,true) && ER)
               {
                trade.PositionClose(position.Ticket());
                changeStopLoss=false;
               }
+             
            }
         }
 
@@ -241,8 +243,7 @@ void OnTick()
                trade.PositionModify(position.Ticket(),mrate[1].high,currentTP);
                changeStopLoss=true;
               }
-
-            if(R_Multiple(currentTP,currentSL,orderPrice,true))
+            if(R_Multiple(currentTP,currentSL,orderPrice,true) && ER)
               {
 
                trade.PositionClose(position.Ticket());

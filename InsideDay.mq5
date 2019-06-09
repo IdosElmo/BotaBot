@@ -19,7 +19,8 @@ input double InpR=1.5; //R ratio for entry
 input double InpEvolvingR=0.4; //Evo-R value
 input double longFactor=1; //Factor for long
 input double shortFactor=1; //Factor for short
-input bool ER = false; //Evo-R switch
+input bool ER = false; //Evo-R switch (false = off)
+input bool moveSL = false; //Move SL (false = off)
 //+------------------------------------------------------------------+
 //| global parameters                                 |
 //+------------------------------------------------------------------+
@@ -212,7 +213,7 @@ double x = mrate[0].close;
          double median=(lowerDailyBound+upperDailyBound)/2;
          //double quarter = (currentSL + median) / 2;
 
-         if(mrate[1].close>median)
+         if(moveSL && mrate[1].close>median)
            {
             if(!changeStopLoss)
               {
@@ -237,7 +238,7 @@ double x = mrate[0].close;
          double median=(lowerDailyBound+upperDailyBound)/2;
          //double quarter = median / 2;
 
-         if(mrate[1].close<median)
+         if(moveSL && mrate[1].close<median)
            {
             if(!changeStopLoss)
               {

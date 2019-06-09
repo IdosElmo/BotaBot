@@ -6,3 +6,6 @@ Improve SL placement - use timeframe ATR to refine stop placement.
 
 Trade Mgmt:
 Market close positions where EQ was breached and then rejected. (?)
+
+Indicator:
+Can we show the "range" EQ in the indicator ?

@@ -164,6 +164,10 @@ int OnCalculate(const int rates_total,
             lowerDailyBound=low[i-1];
             isInsideDay=true;
             insideBuffer[i] = 1;
+            if(insideBuffer[i-1] == 2 || insideBuffer[i-1] == 3) //inside right after a breach
+            {
+               insideBuffer[i] = EMPTY_VALUE; 
+            }
 
             // if(i>1 && lineHighBuff[i-2]==EMPTY_VALUE && lineLowBuff[i-2]==EMPTY_VALUE)
             //   {
@@ -222,7 +226,7 @@ int OnCalculate(const int rates_total,
            {
             if(ObjectFind(0,buyName+IntegerToString(countBUY))<0)
               {
-               if(!ObjectCreate(0,buyName+IntegerToString(countBUY),OBJ_ARROW_THUMB_UP,0,time[i],low[i]))
+               if(!ObjectCreate(0,buyName+IntegerToString(countBUY),OBJ_ARROW_THUMB_UP,0,time[i],low[i]-0.0004))
                  {
                   Print("Error: can't create object! code #",GetLastError());
                   return(0);
@@ -240,7 +244,7 @@ int OnCalculate(const int rates_total,
            {
             if(ObjectFind(0,sellName+IntegerToString(countSELL))<0)
               {
-               if(!ObjectCreate(0,sellName+IntegerToString(countSELL),OBJ_ARROW_THUMB_DOWN,0,time[i],high[i]))
+               if(!ObjectCreate(0,sellName+IntegerToString(countSELL),OBJ_ARROW_THUMB_DOWN,0,time[i],high[i]+0.0015))
                  {
                   Print("Error: can't create objbect! code #",GetLastError());
                   return(0);
@@ -261,6 +265,11 @@ int OnCalculate(const int rates_total,
            }
         }
      }
+     
+     
+    
+     
+     
    ChartRedraw();
    return(rates_total);
   }

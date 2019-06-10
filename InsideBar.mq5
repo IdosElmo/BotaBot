@@ -28,20 +28,26 @@
 */
 
 #property indicator_chart_window
-#property indicator_buffers 5
-#property indicator_plots 4
+#property indicator_buffers 6
+#property indicator_plots 5
 #property indicator_color1 clrBlue
 #property indicator_color2 clrRed
 #property indicator_color3 clrChocolate
 #property indicator_color4 clrDarkOrange
+#property indicator_color5 clrRed
+
 #property indicator_style1 STYLE_SOLID
 #property indicator_style2 STYLE_SOLID
 #property indicator_style3 STYLE_SOLID
 #property indicator_style4 STYLE_SOLID
+#property indicator_style5 STYLE_SOLID
+
 #property indicator_width1 2
 #property indicator_width2 2
 #property indicator_width3 2
 #property indicator_width4 2
+#property indicator_width5 2
+
 
 //---- global parameters
 string buyName="BuyArrow";
@@ -51,24 +57,27 @@ int countSELL=0;
 bool isInsideDay=false;
 double upperDailyBound;
 double lowerDailyBound;
-
+double median=0;
 //---- buffers ----//
 double HighBuff[];
 double LowBuff[];
 double lineHighBuff[];
 double lineLowBuff[];
 double insideBuffer[];
+double medianBuffer[];
 //+------------------------------------------------------------------+
 //| Custom indicator initialization function                         |
 //+------------------------------------------------------------------+
 int OnInit()
   {
 //--- indicator buffers mapping
-   SetIndexBuffer(0,HighBuff,INDICATOR_DATA);
-   SetIndexBuffer(1,LowBuff,INDICATOR_DATA);
-   SetIndexBuffer(2,lineHighBuff,INDICATOR_DATA);
-   SetIndexBuffer(3,lineLowBuff,INDICATOR_DATA);
-   SetIndexBuffer(4,insideBuffer,INDICATOR_CALCULATIONS);
+   SetIndexBuffer(0,HighBuff);
+   SetIndexBuffer(1,LowBuff);
+   SetIndexBuffer(2,lineHighBuff);
+   SetIndexBuffer(3,lineLowBuff);
+   SetIndexBuffer(4,medianBuffer);
+   SetIndexBuffer(5,insideBuffer,INDICATOR_CALCULATIONS);
+
 
 //initialize arrays
    ArrayInitialize(HighBuff,EMPTY_VALUE);
@@ -76,12 +85,14 @@ int OnInit()
    ArrayInitialize(lineHighBuff,EMPTY_VALUE);
    ArrayInitialize(lineLowBuff,EMPTY_VALUE);
    ArrayInitialize(insideBuffer,EMPTY_VALUE);
+   ArrayInitialize(medianBuffer,EMPTY_VALUE);
 
 //set indicators type
    PlotIndexSetInteger(0,PLOT_DRAW_TYPE,DRAW_ARROW);
    PlotIndexSetInteger(1,PLOT_DRAW_TYPE,DRAW_ARROW);
    PlotIndexSetInteger(2,PLOT_DRAW_TYPE,DRAW_LINE);
    PlotIndexSetInteger(3,PLOT_DRAW_TYPE,DRAW_LINE);
+   PlotIndexSetInteger(4,PLOT_DRAW_TYPE,DRAW_LINE);
 
 //--- indexes draw begin settings
 //--- sets first bar from what index will be drawn
@@ -89,12 +100,14 @@ int OnInit()
    PlotIndexSetInteger(1,PLOT_DRAW_BEGIN,4);
    PlotIndexSetInteger(2,PLOT_DRAW_BEGIN,4);
    PlotIndexSetInteger(3,PLOT_DRAW_BEGIN,4);
+   PlotIndexSetInteger(4,PLOT_DRAW_BEGIN,4);
 
 //--- indexes shift settings
    PlotIndexSetInteger(0,PLOT_SHIFT,0);
    PlotIndexSetInteger(1,PLOT_SHIFT,0);
    PlotIndexSetInteger(2,PLOT_SHIFT,0);
    PlotIndexSetInteger(3,PLOT_SHIFT,0);
+   PlotIndexSetInteger(4,PLOT_SHIFT,0);
 
    IndicatorSetInteger(INDICATOR_DIGITS,_Digits+1);
 
@@ -140,7 +153,8 @@ int OnCalculate(const int rates_total,
       lineHighBuff[i]= EMPTY_VALUE;
       lineLowBuff[i] = EMPTY_VALUE;
       insideBuffer[i]= EMPTY_VALUE;
-
+      medianBuffer[i] = EMPTY_VALUE;
+      
       if(!isInsideDay)
         {
          if(high[i-1]>high[i] && low[i-1]<low[i])
@@ -150,6 +164,9 @@ int OnCalculate(const int rates_total,
 
             upperDailyBound=high[i-1];
             lowerDailyBound=low[i-1];
+            
+            median = (upperDailyBound + lowerDailyBound) /2;
+            medianBuffer[i] = median;
             isInsideDay=true;
             insideBuffer[i]=1;
             if(insideBuffer[i-1]==2 || insideBuffer[i-1]==3) //inside right after a breach
@@ -176,6 +193,7 @@ int OnCalculate(const int rates_total,
             lineHighBuff[i]=upperDailyBound;
             lineLowBuff[i]=lowerDailyBound;
             insideBuffer[i]=4;
+            medianBuffer[i] = median;
            }
          else if(high[i]>=upperDailyBound && low[i]<=lowerDailyBound)
            {
@@ -210,6 +228,7 @@ int OnCalculate(const int rates_total,
             lineHighBuff[i]=upperDailyBound;
             lineLowBuff[i]=lowerDailyBound;
             insideBuffer[i]=2;
+            medianBuffer[i] = median;
             isInsideDay=false;
            }
          //breached high but closed inside
@@ -228,12 +247,14 @@ int OnCalculate(const int rates_total,
             lineHighBuff[i]=upperDailyBound;
             lineLowBuff[i]=lowerDailyBound;
             insideBuffer[i]=3;
+            medianBuffer[i] = median;
             isInsideDay=false;
            }
          else //nothing changed
            {
             lineHighBuff[i]=upperDailyBound;
             lineLowBuff[i]=lowerDailyBound;
+            medianBuffer[i] = median;
             insideBuffer[i]=4;
            }
         }

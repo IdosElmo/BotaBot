@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//|                                                    InsideDay.mq5 |
+//|                                                       IBF_ea.mq5 |
 //|                                                     Ido Elmaliah |
 //|                                             https://www.mql5.com |
 //+------------------------------------------------------------------+
@@ -7,7 +7,7 @@
 #property link      "https://www.mql5.com"
 #property version   "1.60"
 
-#property tester_indicator "InsideBar.ex5"
+#property tester_indicator "IBF_indicator.ex5"
 #include <Trade\Trade.mqh>
 #include <Trade\AccountInfo.mqh>
 
@@ -154,7 +154,7 @@ void OnTick()
 
       takeLimit=upperDailyBound;
       stopLoss=lowerDailyBound -prevATRvalue*longFactor;
-      newSL = mrate[1].high;
+      //newSL = mrate[1].high;
       if(R_Multiple(takeLimit,stopLoss,orderPrice,false))
         {
          isBreachedDOWN=true;
@@ -170,7 +170,7 @@ void OnTick()
 
       takeLimit=lowerDailyBound;
       stopLoss=upperDailyBound+prevATRvalue*shortFactor;
-      newSL = mrate[1].low;
+      //newSL = mrate[1].low;
       if(R_Multiple(takeLimit,stopLoss,orderPrice,false))
         {
          isBreachedUP=true;
@@ -226,6 +226,7 @@ void OnTick()
               {
                if(!changeStopLoss)
                  {
+                  newSL = mrate[1].low;
                   trade.PositionModify(position.Ticket(),newSL,currentTP);
                   changeStopLoss=true;
                  }
@@ -250,6 +251,7 @@ void OnTick()
               {
                if(!changeStopLoss)
                  {
+                  newSL = mrate[1].high;
                   trade.PositionModify(position.Ticket(),newSL,currentTP);
                   changeStopLoss=true;
                  }

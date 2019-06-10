@@ -58,6 +58,7 @@ double pp_close; //previous previous candle's close.
 double pp_high; //previous previous candle's high.
 double pp_low;  //previous previous candle's low.
 double median=0; //mid point between limits (for stop loss change)
+double newSL =0;
 int bars;
 int handler; //custom inside bar handler
 int atr;
@@ -153,7 +154,7 @@ void OnTick()
 
       takeLimit=upperDailyBound;
       stopLoss=lowerDailyBound -prevATRvalue*longFactor;
-
+      newSL = mrate[1].high;
       if(R_Multiple(takeLimit,stopLoss,orderPrice,false))
         {
          isBreachedDOWN=true;
@@ -169,7 +170,7 @@ void OnTick()
 
       takeLimit=lowerDailyBound;
       stopLoss=upperDailyBound+prevATRvalue*shortFactor;
-
+      newSL = mrate[1].low;
       if(R_Multiple(takeLimit,stopLoss,orderPrice,false))
         {
          isBreachedUP=true;
@@ -225,7 +226,6 @@ void OnTick()
               {
                if(!changeStopLoss)
                  {
-                 double newSL = (lowerDailyBound + median)/2;
                   trade.PositionModify(position.Ticket(),newSL,currentTP);
                   changeStopLoss=true;
                  }
@@ -250,7 +250,6 @@ void OnTick()
               {
                if(!changeStopLoss)
                  {
-                  double newSL = (upperDailyBound + median)/2;
                   trade.PositionModify(position.Ticket(),newSL,currentTP);
                   changeStopLoss=true;
                  }

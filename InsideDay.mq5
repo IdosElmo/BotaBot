@@ -19,10 +19,10 @@ input double InpR=1.5; //R ratio for entry
 input double InpEvolvingR=0.4; //Evo-R value
 input double longFactor=1; //Factor for long
 input double shortFactor=1; //Factor for short
-input bool ER = false; //Evo-R switch (false = off)
-input bool moveSL = false; //Move SL (false = off)
+input bool ER=false; //Evo-R switch (false = off)
+input bool moveSL=false; //Move SL (false = off)
 //+------------------------------------------------------------------+
-//| global parameters                                 |
+//| global parameters                                                |
 //+------------------------------------------------------------------+
 CTrade trade;
 CAccountInfo accountInfo;
@@ -32,6 +32,7 @@ MqlTradeRequest mrequest={0};
 MqlTradeResult  mresult={0};
 MqlTradeCheckResult check;
 MqlRates mrate[];
+datetime Time[];
 
 //Indicator buffers
 double upperInside[];
@@ -44,7 +45,8 @@ bool isBreachedUP=false;
 bool isBreachedDOWN=false;
 bool isInsideDay=false;
 bool changeStopLoss=false;
-
+bool Buy_opened=false;
+bool Sell_opened=false;
 double upperDailyBound;
 double lowerDailyBound;
 double positionSize=0;
@@ -55,8 +57,8 @@ double equity=0;
 double pp_close; //previous previous candle's close.
 double pp_high; //previous previous candle's high.
 double pp_low;  //previous previous candle's low.
-
-
+double median=0; //mid point between limits (for stop loss change)
+int bars;
 int handler; //custom inside bar handler
 int atr;
 //+------------------------------------------------------------------+
@@ -79,7 +81,8 @@ int OnInit()
       Alert("Error Creating Handles for indicators - error: ",GetLastError(),"!!");
       return(-1);
      }
-   ChartIndicatorAdd(ChartID(),0,atr);
+   //ChartIndicatorAdd(ChartID(),0,atr);
+   bars=Bars(_Symbol,_Period);
 //EventSetTimer(86400);
 //---
    return(INIT_SUCCEEDED);
@@ -106,6 +109,7 @@ void OnTick()
    ArraySetAsSeries(mrate,true);
    ArraySetAsSeries(insideBuff,true);
    ArraySetAsSeries(atrValues,true);
+
 //--- Get the details of the latest 3 bars
    if(CopyRates(_Symbol,_Period,0,3,mrate)<0)
      {
@@ -114,7 +118,7 @@ void OnTick()
       return;
      }
 //copy upper limit array
-   if(CopyBuffer(handler,4,0,5,insideBuff)<0)
+   if(CopyBuffer(handler,4,0,3,insideBuff)<0)
      {
       Alert("Error copying rates/history data - error:",GetLastError(),"!!");
       ResetLastError();
@@ -128,27 +132,14 @@ void OnTick()
       return;
      }
 
-   bool Buy_opened=false;  // variable to hold the result of Buy opened position
-   bool Sell_opened=false; // variables to hold the result of Sell opened position
-
-   if(PositionSelect(_Symbol)==true)
-     { // we have an opened position
-      if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY)
-        {
-         Buy_opened=true;  //It is a Buy
-        }
-      else if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_SELL)
-        {
-         Sell_opened=true; // It is a Sell
-        }
-     }
-
    pp_close= mrate[2].close;
    pp_high = mrate[2].high;
    pp_low=mrate[2].low;
+   int _bars=Bars(_Symbol,_Period);
+   checkOpenPoisitions();
 
 //you are inside bar
-   if(insideBuff[1]==1 && !isInsideDay)
+   if((insideBuff[1]==1 || insideBuff[1]==0) && !isInsideDay)
      {
       upperDailyBound = pp_high;
       lowerDailyBound = pp_low;
@@ -169,7 +160,6 @@ void OnTick()
          isInsideDay=false;
         }
       else isInsideDay=false;
-
      }
 //high breach and close inside
    else if(insideBuff[1]==3 && isInsideDay)
@@ -196,69 +186,11 @@ void OnTick()
      {
       isInsideDay=false;
      }
-double x = mrate[0].close;
-   if(PositionSelect(_Symbol)==true)
-     {
-      isBreachedDOWN=false;
-      isBreachedUP=false;
-      isInsideDay=false;
-
-      if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY)
-        {
-         //50% function
-         //check evolving R for take profit 
-         orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
-         double currentSL = PositionGetDouble(POSITION_SL);
-         double currentTP = PositionGetDouble(POSITION_TP);
-         double median=(lowerDailyBound+upperDailyBound)/2;
-         //double quarter = (currentSL + median) / 2;
-
-         if(moveSL && mrate[1].close>median)
-           {
-            if(!changeStopLoss)
-              {
-               trade.PositionModify(position.Ticket(),mrate[1].low,currentTP);
-               changeStopLoss=true;
-              }
-              
-            if(ER && R_Multiple(currentTP,currentSL,orderPrice,true))
-              {
-               trade.PositionClose(position.Ticket());
-               changeStopLoss=false;
-              }
-             
-           }
-        }
-
-      else if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_SELL)
-        {
-         orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
-         double currentSL = PositionGetDouble(POSITION_SL);
-         double currentTP = PositionGetDouble(POSITION_TP);
-         double median=(lowerDailyBound+upperDailyBound)/2;
-         //double quarter = median / 2;
-
-         if(moveSL && mrate[1].close<median)
-           {
-            if(!changeStopLoss)
-              {
-               trade.PositionModify(position.Ticket(),mrate[1].high,currentTP);
-               changeStopLoss=true;
-              }
-            if(ER && R_Multiple(currentTP,currentSL,orderPrice,true))
-              {
-
-               trade.PositionClose(position.Ticket());
-               changeStopLoss=false;
-              }
-           }
-        }
-
-     }
 
    if(isBreachedDOWN && !Buy_opened && !Sell_opened)
      {
       Buy();
+      median=(lowerDailyBound+upperDailyBound)/2;
       isBreachedDOWN=false;
       isInsideDay=false;
       changeStopLoss=false;
@@ -266,12 +198,75 @@ double x = mrate[0].close;
    if(isBreachedUP && !Sell_opened && !Buy_opened)
      {
       Sell();
+      median=(lowerDailyBound+upperDailyBound)/2;
       isBreachedUP=false;
       isInsideDay=false;
       changeStopLoss=false;
      }
-   ChartRedraw();
 
+   if(_bars!=bars)
+     {
+      if(PositionSelect(_Symbol)==true)
+        {
+         isBreachedDOWN=false;
+         isBreachedUP=false;
+         isInsideDay=false;
+
+         if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY)
+           {
+            //50% function
+            //check evolving R for take profit 
+            orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+            double currentSL = PositionGetDouble(POSITION_SL);
+            double currentTP = PositionGetDouble(POSITION_TP);
+            //double quarter = (currentSL + median) / 2;
+
+            if(moveSL && mrate[1].close>median)
+              {
+               if(!changeStopLoss)
+                 {
+                 double newSL = (lowerDailyBound + median)/2;
+                  trade.PositionModify(position.Ticket(),newSL,currentTP);
+                  changeStopLoss=true;
+                 }
+
+               if(ER && R_Multiple(currentTP,currentSL,orderPrice,true))
+                 {
+                  trade.PositionClose(position.Ticket());
+                  changeStopLoss=false;
+                 }
+
+              }
+           }
+
+         else if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_SELL)
+           {
+            orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+            double currentSL = PositionGetDouble(POSITION_SL);
+            double currentTP = PositionGetDouble(POSITION_TP);
+            //double quarter = median / 2;
+
+            if(moveSL && mrate[1].close<median)
+              {
+               if(!changeStopLoss)
+                 {
+                  double newSL = (upperDailyBound + median)/2;
+                  trade.PositionModify(position.Ticket(),newSL,currentTP);
+                  changeStopLoss=true;
+                 }
+               if(ER && R_Multiple(currentTP,currentSL,orderPrice,true))
+                 {
+
+                  trade.PositionClose(position.Ticket());
+                  changeStopLoss=false;
+                 }
+              }
+           }
+         bars++;
+        }
+     }
+   ChartRedraw();
+// }
   }
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -312,14 +307,13 @@ bool Buy()
    mrequest.type = ORDER_TYPE_BUY;                                        // Buy Order
    mrequest.type_filling = ORDER_FILLING_FOK;                             // Order execution type
    mrequest.deviation=SymbolInfoInteger(_Symbol,SYMBOL_SPREAD)*2;
-   mrequest.sl=NormalizeDouble(stopLoss,5);
+   mrequest.sl=NormalizeDouble(stopLoss,_Digits);
    mrequest.tp=takeLimit;          // Deviation from current price
    equity=accountInfo.Equity();
    positionSize=equity *(risk_percent/100)/((mrequest.price-mrequest.sl)*100000);
    mrequest.volume=NormalizeDouble(positionSize,2);                                 // number of lots to trade
 
    printStats(mrequest.price,mrequest.sl,mrequest.tp);
-
 //--- send order
    if(OrderCheck(mrequest,check))
      {
@@ -369,14 +363,13 @@ bool Sell()
    mrequest.type = ORDER_TYPE_SELL;                                       // Sell Order
    mrequest.type_filling = ORDER_FILLING_FOK;                             // Order execution type
    mrequest.deviation=SymbolInfoInteger(_Symbol,SYMBOL_SPREAD)*2;         // Deviation from current price
-   mrequest.sl=NormalizeDouble(stopLoss,5);                                                  // Stop Loss
+   mrequest.sl=NormalizeDouble(stopLoss,_Digits);                                                  // Stop Loss
    mrequest.tp= takeLimit;
    equity=accountInfo.Equity();
    positionSize=equity *(risk_percent/100)/((mrequest.sl-mrequest.price)*100000);
    mrequest.volume=NormalizeDouble(positionSize,2);                 // number of lots to trade
 
    printStats(mrequest.price,mrequest.sl,mrequest.tp);
-
 //--- send order
 
    if(OrderCheck(mrequest,check))
@@ -418,8 +411,9 @@ bool R_Multiple(double takeProfit,double lowerLimit,double entry,bool isEvolving
   {
    double distance_to_target=MathAbs(entry-takeProfit);
    double distance_to_stop=MathAbs(entry-lowerLimit);
-   if(distance_to_stop==0) distance_to_stop=0.0001;
-   double div=distance_to_target/distance_to_stop;
+   double div;
+   if(distance_to_stop==0) { div=0; }
+   else { div=distance_to_target/distance_to_stop; }
 //Alert("R: ",div);
 
    if(!isEvolving)
@@ -428,6 +422,9 @@ bool R_Multiple(double takeProfit,double lowerLimit,double entry,bool isEvolving
       if(div > InpR) return true;
       else return false;
      }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
    else
      {
       if(div < InpEvolvingR) return true;
@@ -439,19 +436,41 @@ void printStats(double entryPrice,double SL,double TP)
   {
    double distance_to_target=MathAbs(entryPrice-TP);
    double distance_to_stop=MathAbs(entryPrice-SL);
-   double div=distance_to_target/distance_to_stop;
+   double div;
+   if(distance_to_stop==0) { div=0; }
+   else { div=distance_to_target/distance_to_stop; }
 
-   Alert("High Limit: ",NormalizeDouble(upperDailyBound,5));
-   Alert("Low Limit: ",NormalizeDouble(lowerDailyBound,5));
+   Alert("High Limit: ",NormalizeDouble(upperDailyBound,_Digits));
+   Alert("Low Limit: ",NormalizeDouble(lowerDailyBound,_Digits));
    Alert("Median(50%): ",(upperDailyBound+lowerDailyBound)/2);
-   Alert("Equity: ",NormalizeDouble(equity,4));
-   Alert("Distance to target: ",NormalizeDouble(distance_to_target,5));
-   Alert("Distance to stop: ",NormalizeDouble(distance_to_stop,5));
-   Alert("R-ratio: ",NormalizeDouble(div,5));
-   Alert("Position Size - in LOT: ",NormalizeDouble(positionSize,3));
-   Alert("Entry Price: ",NormalizeDouble(entryPrice,5));
+   Alert("Equity: ",NormalizeDouble(equity,_Digits));
+   Alert("Distance to target: ",NormalizeDouble(distance_to_target,_Digits));
+   Alert("Distance to stop: ",NormalizeDouble(distance_to_stop,_Digits));
+   Alert("R-ratio: ",NormalizeDouble(div,_Digits));
+   Alert("Position Size - in LOT: ",NormalizeDouble(positionSize,_Digits));
+   Alert("Entry Price: ",NormalizeDouble(entryPrice,_Digits));
    Alert("Stop Loss: ",SL);
    Alert("Take Profit: ",TP);
 
+  }
+//+------------------------------------------------------------------+
+void checkOpenPoisitions()
+  {
+   Buy_opened=false;  // variable to hold the result of Buy opened position
+   Sell_opened=false; // variables to hold the result of Sell opened position
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+   if(PositionSelect(_Symbol)==true)
+     { // we have an opened position
+      if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY)
+        {
+         Buy_opened=true;  //It is a Buy
+        }
+      else if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_SELL)
+        {
+         Sell_opened=true; // It is a Sell
+        }
+     }
   }
 //+------------------------------------------------------------------+

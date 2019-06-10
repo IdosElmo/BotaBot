@@ -166,6 +166,7 @@ int OnCalculate(const int rates_total,
             lowerDailyBound=low[i-1];
             
             median = (upperDailyBound + lowerDailyBound) /2;
+            medianBuffer[i-1] = median;
             medianBuffer[i] = median;
             isInsideDay=true;
             insideBuffer[i]=1;

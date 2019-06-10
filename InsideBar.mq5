@@ -154,7 +154,7 @@ int OnCalculate(const int rates_total,
             insideBuffer[i]=1;
             if(insideBuffer[i-1]==2 || insideBuffer[i-1]==3) //inside right after a breach
               {
-               insideBuffer[i]=EMPTY_VALUE;
+               insideBuffer[i]=0;
               }
 
             lineHighBuff[i-1]=upperDailyBound;
@@ -175,7 +175,7 @@ int OnCalculate(const int rates_total,
 
             lineHighBuff[i]=upperDailyBound;
             lineLowBuff[i]=lowerDailyBound;
-            insideBuffer[i]=1;
+            insideBuffer[i]=4;
            }
          else if(high[i]>=upperDailyBound && low[i]<=lowerDailyBound)
            {

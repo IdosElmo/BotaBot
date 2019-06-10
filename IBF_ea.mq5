@@ -34,6 +34,9 @@ MqlTradeCheckResult check;
 MqlRates mrate[];
 datetime Time[];
 
+double countWin=0;
+double countLoss=0;
+
 //Indicator buffers
 double upperInside[];
 double lowerInside[];
@@ -82,7 +85,7 @@ int OnInit()
       Alert("Error Creating Handles for indicators - error: ",GetLastError(),"!!");
       return(-1);
      }
-   //ChartIndicatorAdd(ChartID(),0,atr);
+//ChartIndicatorAdd(ChartID(),0,atr);
    bars=Bars(_Symbol,_Period);
 //EventSetTimer(86400);
 //---
@@ -97,6 +100,7 @@ void OnDeinit(const int reason)
 //IndicatorRelease(handler);
 //EventKillTimer();
 //ObjectsDeleteAll(0,-1,-1);
+ScanClosedTrades();
   }
 //+------------------------------------------------------------------+
 //| Expert tick function                                             |
@@ -139,53 +143,57 @@ void OnTick()
    int _bars=Bars(_Symbol,_Period);
    checkOpenPoisitions();
 
-//you are inside bar
-   if((insideBuff[1]==1 || insideBuff[1]==0) && !isInsideDay)
+//check only if there are no positions
+   if(PositionSelect(_Symbol)==false)
      {
-      upperDailyBound = pp_high;
-      lowerDailyBound = pp_low;
-      isInsideDay=true;
-     }
-//low breach and close inside
-   else if(insideBuff[1]==2 && isInsideDay)
-     {
-      orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
-      double prevATRvalue=atrValues[1];
-
-      takeLimit=upperDailyBound;
-      stopLoss=lowerDailyBound -prevATRvalue*longFactor;
-      //newSL = mrate[1].high;
-      if(R_Multiple(takeLimit,stopLoss,orderPrice,false))
+      //you are inside bar
+      if((insideBuff[1]==1 || insideBuff[1]==0) && !isInsideDay)
         {
-         isBreachedDOWN=true;
+         upperDailyBound = pp_high;
+         lowerDailyBound = pp_low;
+         isInsideDay=true;
+        }
+      //low breach and close inside
+      else if(insideBuff[1]==2 && isInsideDay)
+        {
+         orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+         double prevATRvalue=atrValues[1];
+
+         takeLimit=upperDailyBound;
+         stopLoss=lowerDailyBound -prevATRvalue*longFactor;
+         //newSL = mrate[1].high;
+         if(R_Multiple(takeLimit,stopLoss,orderPrice,false))
+           {
+            isBreachedDOWN=true;
+            isInsideDay=false;
+           }
+         else isInsideDay=false;
+        }
+      //high breach and close inside
+      else if(insideBuff[1]==3 && isInsideDay)
+        {
+         orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_BID);
+         double prevATRvalue=atrValues[1];
+
+         takeLimit=lowerDailyBound;
+         stopLoss=upperDailyBound+prevATRvalue*shortFactor;
+         //newSL = mrate[1].low;
+         if(R_Multiple(takeLimit,stopLoss,orderPrice,false))
+           {
+            isBreachedUP=true;
+            isInsideDay = false;
+           }
+         else isInsideDay=false;
+
+        }
+      else if(insideBuff[1]==4)
+        {
+         isInsideDay=true;
+        }
+      else if(insideBuff[1]==EMPTY_VALUE)
+        {
          isInsideDay=false;
         }
-      else isInsideDay=false;
-     }
-//high breach and close inside
-   else if(insideBuff[1]==3 && isInsideDay)
-     {
-      orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_BID);
-      double prevATRvalue=atrValues[1];
-
-      takeLimit=lowerDailyBound;
-      stopLoss=upperDailyBound+prevATRvalue*shortFactor;
-      //newSL = mrate[1].low;
-      if(R_Multiple(takeLimit,stopLoss,orderPrice,false))
-        {
-         isBreachedUP=true;
-         isInsideDay = false;
-        }
-      else isInsideDay=false;
-
-     }
-   else if(insideBuff[1]==4)
-     {
-      isInsideDay=true;
-     }
-   else if(insideBuff[1]==EMPTY_VALUE)
-     {
-      isInsideDay=false;
      }
 
    if(isBreachedDOWN && !Buy_opened && !Sell_opened)
@@ -226,7 +234,7 @@ void OnTick()
               {
                if(!changeStopLoss)
                  {
-                  newSL = mrate[1].low;
+                  newSL=mrate[1].low;
                   trade.PositionModify(position.Ticket(),newSL,currentTP);
                   changeStopLoss=true;
                  }
@@ -251,7 +259,7 @@ void OnTick()
               {
                if(!changeStopLoss)
                  {
-                  newSL = mrate[1].high;
+                  newSL=mrate[1].high;
                   trade.PositionModify(position.Ticket(),newSL,currentTP);
                   changeStopLoss=true;
                  }
@@ -473,5 +481,35 @@ void checkOpenPoisitions()
          Sell_opened=true; // It is a Sell
         }
      }
+  }
+//+------------------------------------------------------------------+
+void ScanClosedTrades()
+  {
+   HistorySelect(0,TimeCurrent());
+
+   ulong  ticket=0;
+   double profit;
+   uint   dealsTotal=HistoryDealsTotal();
+//--- Loop for tracking wins losses and lot sizes for trading
+
+   for(uint i=1; i<dealsTotal; i++)
+     {
+      if((ticket=HistoryDealGetTicket(i))>0)
+        {
+         profit=HistoryDealGetDouble(ticket,DEAL_PROFIT);
+
+        }
+
+      if(profit<0)
+        {
+         countLoss++;
+        }
+      else if(profit>0)countWin++;
+
+     }
+   double ratio=countWin/(countWin+countLoss);
+   Alert("Win: ",countWin);
+   Alert("Loss: ",countLoss);
+   Alert("ratio: ",NormalizeDouble(ratio,4));
   }
 //+------------------------------------------------------------------+

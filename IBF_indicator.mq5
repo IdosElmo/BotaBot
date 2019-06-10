@@ -50,10 +50,6 @@
 
 
 //---- global parameters
-string buyName="BuyArrow";
-string sellName="SellArrow";
-int countBUY=0;
-int countSELL=0;
 bool isInsideDay=false;
 double upperDailyBound;
 double lowerDailyBound;
@@ -159,8 +155,8 @@ int OnCalculate(const int rates_total,
         {
          if(high[i-1]>high[i] && low[i-1]<low[i])
            {
-            HighBuff[i]= high[i];
-            LowBuff[i] = low[i];
+            //HighBuff[i]= high[i];
+            //LowBuff[i] = low[i];
 
             upperDailyBound=high[i-1];
             lowerDailyBound=low[i-1];
@@ -188,8 +184,8 @@ int OnCalculate(const int rates_total,
 
          if(high[i-1]>high[i] && low[i-1]<low[i])
            {
-            HighBuff[i]= high[i];
-            LowBuff[i] = low[i];
+            //HighBuff[i]= high[i];
+            //LowBuff[i] = low[i];
 
             lineHighBuff[i]=upperDailyBound;
             lineLowBuff[i]=lowerDailyBound;

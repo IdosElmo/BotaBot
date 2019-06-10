@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//|                                                       IBF_ea.mq5 |
+//|                                                    InsideDay.mq5 |
 //|                                                     Ido Elmaliah |
 //|                                             https://www.mql5.com |
 //+------------------------------------------------------------------+
@@ -119,7 +119,7 @@ void OnTick()
       return;
      }
 //copy upper limit array
-   if(CopyBuffer(handler,4,0,3,insideBuff)<0)
+   if(CopyBuffer(handler,5,0,3,insideBuff)<0)
      {
       Alert("Error copying rates/history data - error:",GetLastError(),"!!");
       ResetLastError();

@@ -216,40 +216,22 @@ int OnCalculate(const int rates_total,
          //breached low but closed inside
          else if(low[i]<lowerDailyBound && high[i]<upperDailyBound && close[i]>lowerDailyBound && isInsideDay)
            {
-            if(ObjectFind(0,buyName+IntegerToString(countBUY))<0)
-              {
-               if(!ObjectCreate(0,buyName+IntegerToString(countBUY),OBJ_ARROW_THUMB_UP,0,time[i],low[i]-0.0004))
-                 {
-                  Print("Error: can't create object! code #",GetLastError());
-                  return(0);
-                 }
-               ObjectSetInteger(0,buyName+IntegerToString(countBUY),OBJPROP_WIDTH,5);
-               countBUY++;
-              }
             lineHighBuff[i]=upperDailyBound;
             lineLowBuff[i]=lowerDailyBound;
             insideBuffer[i]=2;
             medianBuffer[i] = median;
             isInsideDay=false;
+            LowBuff[i]=low[i];
            }
          //breached high but closed inside
          else if(high[i]>upperDailyBound && low[i]>lowerDailyBound && close[i]>lowerDailyBound && isInsideDay)
            {
-            if(ObjectFind(0,sellName+IntegerToString(countSELL))<0)
-              {
-               if(!ObjectCreate(0,sellName+IntegerToString(countSELL),OBJ_ARROW_THUMB_DOWN,0,time[i],high[i]+0.0015))
-                 {
-                  Print("Error: can't create objbect! code #",GetLastError());
-                  return(0);
-                 }
-               ObjectSetInteger(0,sellName+IntegerToString(countSELL),OBJPROP_WIDTH,5);
-               countSELL++;
-              }
             lineHighBuff[i]=upperDailyBound;
             lineLowBuff[i]=lowerDailyBound;
             insideBuffer[i]=3;
             medianBuffer[i] = median;
             isInsideDay=false;
+            HighBuff[i]=high[i];
            }
          else //nothing changed
            {

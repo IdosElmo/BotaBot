@@ -68,7 +68,7 @@ int atr;
 int OnInit()
   {
 //---
-   handler=iCustom(_Symbol,_Period,"InsideBar");
+   handler=iCustom(_Symbol,_Period,"IBF_indicator");
    if(handler==INVALID_HANDLE)
      {
       Alert("Error Creating Handles for indicators - error: ",GetLastError(),"!!");

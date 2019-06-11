@@ -1,10 +1,10 @@
 //+------------------------------------------------------------------+
-//|                                                     Ma-Cross.mq5 |
-//|                                                           Sheepy |
+//|                                                 Boli_SL_BASE.mq5 |
+//|                                                              Ido |
 //|                                             https://www.mql5.com |
 //+------------------------------------------------------------------+
 #include <Trade\Trade.mqh>
-#property copyright "Sheepy"
+#property copyright "Ido"
 #property link      "https://www.mql5.com"
 #property version   "1.00"
 

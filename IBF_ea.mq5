@@ -230,9 +230,9 @@ void OnTick()
             double currentTP = PositionGetDouble(POSITION_TP);
             //double quarter = (currentSL + median) / 2;
 
-            if(moveSL && mrate[1].close>median)
+            if(mrate[1].close>median)
               {
-               if(!changeStopLoss)
+               if(moveSL && !changeStopLoss)
                  {
                   newSL=mrate[1].low;
                   trade.PositionModify(position.Ticket(),newSL,currentTP);
@@ -255,9 +255,9 @@ void OnTick()
             double currentTP = PositionGetDouble(POSITION_TP);
             //double quarter = median / 2;
 
-            if(moveSL && mrate[1].close<median)
+            if(mrate[1].close<median)
               {
-               if(!changeStopLoss)
+               if(moveSL && !changeStopLoss)
                  {
                   newSL=mrate[1].high;
                   trade.PositionModify(position.Ticket(),newSL,currentTP);

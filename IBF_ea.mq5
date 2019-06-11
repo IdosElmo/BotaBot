@@ -50,6 +50,7 @@ bool isInsideDay=false;
 bool changeStopLoss=false;
 bool Buy_opened=false;
 bool Sell_opened=false;
+bool flag=false; //flag median calculation
 double upperDailyBound;
 double lowerDailyBound;
 double positionSize=0;
@@ -100,7 +101,7 @@ void OnDeinit(const int reason)
 //IndicatorRelease(handler);
 //EventKillTimer();
 //ObjectsDeleteAll(0,-1,-1);
-ScanClosedTrades();
+   ScanClosedTrades();
   }
 //+------------------------------------------------------------------+
 //| Expert tick function                                             |
@@ -143,76 +144,6 @@ void OnTick()
    int _bars=Bars(_Symbol,_Period);
    checkOpenPoisitions();
 
-//check only if there are no positions
-   if(PositionSelect(_Symbol)==false)
-     {
-      //you are inside bar
-      if((insideBuff[1]==1 || insideBuff[1]==0) && !isInsideDay)
-        {
-         upperDailyBound = pp_high;
-         lowerDailyBound = pp_low;
-         isInsideDay=true;
-        }
-      //low breach and close inside
-      else if(insideBuff[1]==2 && isInsideDay)
-        {
-         orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
-         double prevATRvalue=atrValues[1];
-
-         takeLimit=upperDailyBound;
-         stopLoss=lowerDailyBound -prevATRvalue*longFactor;
-         //newSL = mrate[1].high;
-         if(R_Multiple(takeLimit,stopLoss,orderPrice,false))
-           {
-            isBreachedDOWN=true;
-            isInsideDay=false;
-           }
-         else isInsideDay=false;
-        }
-      //high breach and close inside
-      else if(insideBuff[1]==3 && isInsideDay)
-        {
-         orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_BID);
-         double prevATRvalue=atrValues[1];
-
-         takeLimit=lowerDailyBound;
-         stopLoss=upperDailyBound+prevATRvalue*shortFactor;
-         //newSL = mrate[1].low;
-         if(R_Multiple(takeLimit,stopLoss,orderPrice,false))
-           {
-            isBreachedUP=true;
-            isInsideDay = false;
-           }
-         else isInsideDay=false;
-
-        }
-      else if(insideBuff[1]==4)
-        {
-         isInsideDay=true;
-        }
-      else if(insideBuff[1]==EMPTY_VALUE)
-        {
-         isInsideDay=false;
-        }
-     }
-
-   if(isBreachedDOWN && !Buy_opened && !Sell_opened)
-     {
-      Buy();
-      median=(lowerDailyBound+upperDailyBound)/2;
-      isBreachedDOWN=false;
-      isInsideDay=false;
-      changeStopLoss=false;
-     }
-   if(isBreachedUP && !Sell_opened && !Buy_opened)
-     {
-      Sell();
-      median=(lowerDailyBound+upperDailyBound)/2;
-      isBreachedUP=false;
-      isInsideDay=false;
-      changeStopLoss=false;
-     }
-
    if(_bars!=bars)
      {
       if(PositionSelect(_Symbol)==true)
@@ -220,6 +151,8 @@ void OnTick()
          isBreachedDOWN=false;
          isBreachedUP=false;
          isInsideDay=false;
+
+         if(!flag) { flag=true; median=(lowerDailyBound+upperDailyBound)/2; }
 
          if(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY)
            {
@@ -274,9 +207,88 @@ void OnTick()
          bars++;
         }
      }
-   ChartRedraw();
-// }
+
+//check only if there are no positions
+   if(PositionSelect(_Symbol)==false)
+     {
+      flag=false;
+      //you are inside bar
+      if((insideBuff[1]==1 || insideBuff[1]==0) && !isInsideDay)
+        {
+         upperDailyBound = pp_high;
+         lowerDailyBound = pp_low;
+         isInsideDay=true;
+        }
+      //low breach and close inside
+      else if(insideBuff[1]==2 && isInsideDay)
+        {
+         orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_ASK);
+         double prevATRvalue=atrValues[1];
+
+         takeLimit=upperDailyBound;
+         stopLoss=lowerDailyBound -prevATRvalue*longFactor;
+         //newSL = mrate[1].high;
+         if(R_Multiple(takeLimit,stopLoss,orderPrice,false))
+           {
+            isBreachedDOWN=true;
+            isInsideDay=false;
+           }
+         else isInsideDay=false;
+        }
+      //high breach and close inside
+      else if(insideBuff[1]==3 && isInsideDay)
+        {
+         orderPrice=SymbolInfoDouble(_Symbol,SYMBOL_BID);
+         double prevATRvalue=atrValues[1];
+
+         takeLimit=lowerDailyBound;
+         stopLoss=upperDailyBound+prevATRvalue*shortFactor;
+         //newSL = mrate[1].low;
+         if(R_Multiple(takeLimit,stopLoss,orderPrice,false))
+           {
+            isBreachedUP=true;
+            isInsideDay = false;
+           }
+         else isInsideDay=false;
+
+        }
+      else if(insideBuff[1]==4)
+        {
+         isInsideDay=true;
+        }
+      else if(insideBuff[1]==EMPTY_VALUE)
+        {
+         isInsideDay=false;
+        }
+
+     }
+   else if(flag)
+     {
+      if((insideBuff[1]==1 || insideBuff[1]==0) && !isInsideDay)
+        {
+         upperDailyBound = pp_high;
+         lowerDailyBound = pp_low;
+         isInsideDay=true;
+        }
+     }
+
+   if(isBreachedDOWN && !Buy_opened && !Sell_opened)
+     {
+      Buy();
+      isBreachedDOWN=false;
+      isInsideDay=false;
+      changeStopLoss=false;
+     }
+   if(isBreachedUP && !Sell_opened && !Buy_opened)
+     {
+      Sell();
+      isBreachedUP=false;
+      isInsideDay=false;
+      changeStopLoss=false;
+     }
+ChartRedraw();
   }
+
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
@@ -493,6 +505,9 @@ void ScanClosedTrades()
 //--- Loop for tracking wins losses and lot sizes for trading
 
    for(uint i=1; i<dealsTotal; i++)
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
      {
       if((ticket=HistoryDealGetTicket(i))>0)
         {
